@@ -1,0 +1,80 @@
+How to install Calendesk
+========================
+
+Requires macOS 14 Sonoma or later. Runs on Apple Silicon Macs (M1 or newer).
+The Liquid Glass theme needs macOS 26 or later; older Macs keep the solid look.
+
+Calendesk isn't notarized by Apple, so on a new Mac macOS blocks it the first
+time. Pick ONE of the two ways below, and use the Terminal fixes if it fails.
+
+
+OPTION A: Installer package (Calendesk-x.x.pkg, inside Calendesk-x.x.zip)
+--------------------------------------------------------------------------
+1. Double-click Calendesk-x.x.zip to unzip it, then double-click
+   Calendesk-x.x.pkg.
+2. If macOS says it "can't be opened" or "could not verify" it: click Done,
+   open System Settings > Privacy & Security, scroll to Security and click
+   "Open Anyway" next to Calendesk-x.x.pkg. Enter your password.
+3. Follow the installer. Calendesk is installed in Applications; open it
+   from there.
+
+
+OPTION B: Disk image (Calendesk-x.x.dmg)
+----------------------------------------
+1. Open the .dmg and drag Calendesk onto the Applications folder.
+2. Open Calendesk from Applications. If macOS blocks it, click Done (don't
+   move it to the Bin), then System Settings > Privacy & Security >
+   "Open Anyway".
+
+
+IF IT STILL FAILS: Terminal commands
+------------------------------------
+Open Terminal (Applications > Utilities > Terminal), paste a command, press
+Return and type your Mac password when asked (nothing shows as you type).
+
+1. The installer package won't open. Install it from Terminal instead
+   (change the path if the file isn't in Downloads):
+
+       sudo installer -pkg ~/Downloads/Calendesk-*.pkg -target /
+
+2. Calendesk is installed but won't open, or macOS says it is "damaged":
+
+       sudo xattr -cr /Applications/Calendesk.app && open /Applications/Calendesk.app
+
+3. "Open Anyway" doesn't appear, or the .zip / .pkg / .dmg itself is blocked:
+
+       xattr -c ~/Downloads/Calendesk-*
+
+   then double-click the file again.
+
+4. Your events never show up, or Calendesk keeps saying it has no access
+   to your calendars:
+
+       tccutil reset All app.calendesk.calendar
+
+   then quit and reopen Calendesk and click Allow when it asks for Calendar
+   access (System Settings > Privacy & Security > Calendars > Calendesk).
+
+5. Check the Mac is new enough (must say 14 or higher):
+
+       sw_vers -productVersion
+
+
+AFTER INSTALLING
+----------------
+Calendesk shows the events from the calendars already set up in the Calendar
+app (iCloud, Google, Exchange...), so allow Calendar access when asked. Press
+Shift-Command-W to show or hide the desktop widget; drag it to move it,
+scroll or swipe over it to change month, and right-click it for quick
+options. Command-, opens Settings, where you pick one of four calendar
+styles, fonts and colors, turn on the Liquid Glass theme (Appearance tab,
+macOS 26+), and choose "Match Tickdesk" so it matches your Tickdesk clock.
+Command-N adds a new event and Command-T jumps to today.
+
+Calendesk keeps no files of its own: your events stay in the Calendar app and
+its settings are saved in macOS preferences.
+
+To uninstall: quit Calendesk (and turn off "launch at login" in its Settings
+first if you turned it on), then run
+
+       rm -rf /Applications/Calendesk.app && defaults delete app.calendesk.calendar

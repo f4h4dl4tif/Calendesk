@@ -27,13 +27,15 @@ struct MainView: View {
             .padding(24)
 
             if !store.hasAccess && settings.config.showEvents {
-                AccessBanner(p: p).padding(.horizontal, 24).padding(.bottom, 12)
+                AccessBanner(p: p, glass: settings.config.usesGlass).padding(.horizontal, 24).padding(.bottom, 12)
             }
 
             StyleGallery()
                 .padding(.bottom, 18)
         }
-        .background(p.background.ignoresSafeArea())
+        .background {
+            if settings.config.usesGlass { GlassBackdrop(p: p).ignoresSafeArea() } else { p.background.ignoresSafeArea() }
+        }
         .animation(.easeInOut(duration: 0.25), value: settings.config)
         .onAppear { AppActions.shared.openWindow = openWindow }
         .sheet(isPresented: $vm.showingNewEvent) {
@@ -164,19 +166,18 @@ private struct DayDetail: View {
             HStack {
                 if store.hasAccess && !store.demoMode {
                     Button { newEvent() } label: { Label("New Event", systemImage: "plus") }
+                        .glassButton(cfg.usesGlass)
                 }
                 Spacer()
                 Button("Open in Calendar") { AppActions.openCalendarApp() }
+                    .glassButton(cfg.usesGlass)
             }
             .controlSize(.small)
         }
         .padding(18)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(p.card)
-                .shadow(color: .black.opacity(0.1), radius: 6, y: 2)
-        )
+        .surface(RoundedRectangle(cornerRadius: 16, style: .continuous), fill: p.card,
+                 glass: cfg.usesGlass, palette: p, shadow: 6, shadowY: 2, shadowOpacity: 0.1)
     }
 
     private func note(_ s: String, _ p: Palette) -> some View {
@@ -186,6 +187,7 @@ private struct DayDetail: View {
 
 private struct AccessBanner: View {
     let p: Palette
+    var glass = false
     var body: some View {
         let store = EventStore.shared
         HStack(spacing: 12) {
@@ -197,10 +199,22 @@ private struct AccessBanner: View {
             }
             Spacer()
             Button(store.canAsk ? "Allow Access" : "Open Privacy Settings") { store.requestAccess() }
-                .buttonStyle(.borderedProminent)
+                .glassButton(glass, prominent: true)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(p.card))
+        .modifier(BannerBackground(p: p, glass: glass))
+    }
+}
+
+private struct BannerBackground: ViewModifier {
+    let p: Palette
+    let glass: Bool
+    func body(content: Content) -> some View {
+        if glass {
+            content.surface(RoundedRectangle(cornerRadius: 12, style: .continuous), fill: p.card, glass: true, palette: p)
+        } else {
+            content.background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(p.card))
+        }
     }
 }
 

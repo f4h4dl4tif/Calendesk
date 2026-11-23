@@ -204,6 +204,9 @@ private struct WidgetRootView: View {
                 Toggle("Show Events", isOn: $settings.config.showEvents)
                 Toggle("Show Week Numbers", isOn: $settings.config.showWeekNumbers)
                 Toggle("Show Background", isOn: $settings.config.widgetBackground)
+                if GlassSupport.isAvailable {
+                    Toggle("Liquid Glass", isOn: $settings.config.glassTheme)
+                }
                 Toggle("Lock Position", isOn: $settings.config.widgetLocked)
                 Divider()
                 Button("Go to Today") { controller.navigate(0) }

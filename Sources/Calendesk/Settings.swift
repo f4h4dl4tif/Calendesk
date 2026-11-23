@@ -242,6 +242,8 @@ struct CalendarConfig: Codable, Equatable {
     var customLight = CustomColors(background: "#E9E9EC", card: "#FFFFFF", digit: "#1C1C1E", accent: "#FF3B30")
     var customDark = CustomColors(background: "#101012", card: "#2A2A2D", digit: "#F5F5F7", accent: "#FF453A")
     var followTickdesk = false
+    /// Liquid Glass surfaces (macOS 26+). On by default.
+    var glassTheme = true
 
     // Calendar
     var firstWeekday: FirstWeekday = .system
@@ -278,6 +280,7 @@ struct CalendarConfig: Codable, Equatable {
         customLight = v(.customLight, d.customLight)
         customDark = v(.customDark, d.customDark)
         followTickdesk = v(.followTickdesk, d.followTickdesk)
+        glassTheme = v(.glassTheme, d.glassTheme)
         firstWeekday = v(.firstWeekday, d.firstWeekday)
         showWeekNumbers = v(.showWeekNumbers, d.showWeekNumbers)
         highlightWeekends = v(.highlightWeekends, d.highlightWeekends)
@@ -399,6 +402,7 @@ struct TickdeskStyle: Decodable {
     var weight: FontWeightOption
     var customLight: CustomColors
     var customDark: CustomColors
+    var glassTheme: Bool?
 
     static let domain = "app.tickdesk.clock"
 
@@ -426,6 +430,7 @@ struct TickdeskStyle: Decodable {
         c.weight = weight
         c.customLight = customLight
         c.customDark = customDark
+        if let glassTheme { c.glassTheme = glassTheme }
     }
 }
 
@@ -439,6 +444,9 @@ extension CalendarConfig {
     }
 
     func palette(for scheme: ColorScheme) -> Palette { colors(for: scheme).palette }
+
+    /// Liquid Glass is drawn only when chosen and supported.
+    var usesGlass: Bool { glassTheme && GlassSupport.isAvailable }
 
     func typeface(_ size: CGFloat, weight: Font.Weight? = nil) -> Font {
         font.font(size: size, weight: weight ?? self.weight.weight)

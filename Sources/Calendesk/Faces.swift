@@ -87,18 +87,23 @@ struct CalendarFace: View {
         let today = DayClock.shared.today
         let p = cfg.palette(for: scheme)
         let shown = month ?? today
-        face(today: today, shown: shown, p: p)
-            .padding(showsBackground ? size * 1.1 : 0)
-            .background {
-                if showsBackground {
-                    RoundedRectangle(cornerRadius: size * 1.2, style: .continuous)
-                        .fill(p.background)
-                        .shadow(color: .black.opacity(0.18), radius: size * 0.5, y: size * 0.15)
-                }
-            }
+        backdrop(face(today: today, shown: shown, p: p)
+            .padding(showsBackground ? size * 1.1 : 0), p: p)
             .task(id: Calendar.current.dateInterval(of: .month, for: shown)?.start) {
                 EventStore.shared.ensureLoaded(around: shown)
             }
+    }
+
+    /// The background panel: solid, or one Liquid Glass slab with the theme on.
+    @ViewBuilder
+    private func backdrop<V: View>(_ v: V, p: Palette) -> some View {
+        if showsBackground {
+            v.surface(RoundedRectangle(cornerRadius: size * 1.2, style: .continuous),
+                      fill: p.background, glass: cfg.usesGlass, palette: p,
+                      shadow: size * 0.5, shadowY: size * 0.15, shadowOpacity: 0.18)
+        } else {
+            v
+        }
     }
 
     @ViewBuilder
@@ -143,16 +148,22 @@ struct FaceContext {
 }
 
 private struct Card<Content: View>: View {
+    @Environment(\.onGlass) private var onGlass
     let ctx: FaceContext
     @ViewBuilder var content: Content
     var body: some View {
-        content
-            .padding(ctx.size * 0.8)
-            .background(
-                RoundedRectangle(cornerRadius: ctx.size * 0.9, style: .continuous)
-                    .fill(ctx.p.card)
-                    .shadow(color: .black.opacity(0.14), radius: ctx.size * 0.3, y: ctx.size * 0.1)
-            )
+        let shape = RoundedRectangle(cornerRadius: ctx.size * 0.9, style: .continuous)
+        if ctx.cfg.usesGlass && onGlass {
+            // Already on the glass panel: a soft inset instead of glass on glass.
+            content
+                .padding(ctx.size * 0.8)
+                .background(shape.fill(ctx.p.glassInset))
+        } else {
+            content
+                .padding(ctx.size * 0.8)
+                .surface(shape, fill: ctx.p.card, glass: ctx.cfg.usesGlass, palette: ctx.p,
+                         shadow: ctx.size * 0.3, shadowY: ctx.size * 0.1)
+        }
     }
 }
 
@@ -240,9 +251,24 @@ private struct HoverRing: View {
     }
 }
 
+/// Background of the month arrows: a faint capsule, or a small glass capsule
+/// when it floats straight over the window or desktop.
+private struct NavCapsule: ViewModifier {
+    let ctx: FaceContext
+    let glass: Bool
+    func body(content: Content) -> some View {
+        if glass {
+            content.surface(Capsule(), fill: .clear, glass: true, palette: ctx.p, interactive: true)
+        } else {
+            content.background(Capsule().fill(ctx.p.digit.opacity(0.06)))
+        }
+    }
+}
+
 // MARK: - Month grid
 
 private struct MonthFace: View {
+    @Environment(\.onGlass) private var onGlass
     let ctx: FaceContext
     let month: Date
     var selected: Binding<Date>?
@@ -311,7 +337,7 @@ private struct MonthFace: View {
                     NavButton(ctx: ctx, symbol: "chevron.right", help: "Next month") { onNavigate(1) }
                 }
                 .padding(s * 0.12)
-                .background(Capsule().fill(ctx.p.digit.opacity(0.06)))
+                .modifier(NavCapsule(ctx: ctx, glass: ctx.cfg.usesGlass && !onGlass))
                 .fixedSize()
             }
         }
@@ -607,6 +633,7 @@ struct EventRow: View {
 // MARK: - Day page (tear-off)
 
 private struct DayPageFace: View {
+    @Environment(\.onGlass) private var onGlass
     let ctx: FaceContext
 
     var body: some View {
@@ -679,13 +706,9 @@ private struct DayPageFace: View {
             .padding(.top, s * 0.5)
             .padding(.bottom, s * 0.9)
             .frame(width: w)
-            .background(
-                UnevenRoundedRectangle(bottomLeadingRadius: s * 0.9, bottomTrailingRadius: s * 0.9, style: .continuous)
-                    .fill(ctx.p.card)
-            )
+            .modifier(PageBody(ctx: ctx, onGlass: onGlass))
         }
-        .compositingGroup()
-        .shadow(color: .black.opacity(0.16), radius: s * 0.35, y: s * 0.12)
+        .modifier(PageShadow(on: !ctx.cfg.usesGlass, s: s))
         .padding(.top, s * 0.5)
         .fixedSize()
     }
@@ -695,6 +718,36 @@ private struct DayPageFace: View {
         let n = cal.ordinality(of: .day, in: .year, for: ctx.today) ?? 1
         let total = cal.range(of: .day, in: .year, for: ctx.today)?.count ?? 365
         return "Day \(n) of \(total) · Week \(cal.component(.weekOfYear, from: ctx.today))"
+    }
+}
+
+/// The tear-off page's drop shadow (glass brings its own depth; flattening would hide it).
+private struct PageShadow: ViewModifier {
+    let on: Bool
+    let s: CGFloat
+    func body(content: Content) -> some View {
+        if on {
+            content.compositingGroup().shadow(color: .black.opacity(0.16), radius: s * 0.35, y: s * 0.12)
+        } else {
+            content
+        }
+    }
+}
+
+/// The page under the month banner: card color, or glass with the theme on.
+private struct PageBody: ViewModifier {
+    let ctx: FaceContext
+    let onGlass: Bool
+    func body(content: Content) -> some View {
+        let s = ctx.size
+        let shape = UnevenRoundedRectangle(bottomLeadingRadius: s * 0.9, bottomTrailingRadius: s * 0.9, style: .continuous)
+        if ctx.cfg.usesGlass && onGlass {
+            content.background(shape.fill(ctx.p.glassInset))
+        } else if ctx.cfg.usesGlass {
+            content.surface(shape, fill: ctx.p.card, glass: true, palette: ctx.p)
+        } else {
+            content.background(shape.fill(ctx.p.card))
+        }
     }
 }
 

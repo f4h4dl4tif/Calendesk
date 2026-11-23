@@ -40,10 +40,11 @@ private struct SaveBar: View {
             Button("Revert") { settings.revertDraft() }
                 .disabled(!dirty)
                 .keyboardShortcut(.cancelAction)
+                .glassButton(settings.config.usesGlass)
             Button("Save") { settings.saveDraft() }
                 .disabled(!dirty)
                 .keyboardShortcut("s", modifiers: .command)
-                .buttonStyle(.borderedProminent)
+                .glassButton(settings.config.usesGlass, prominent: true)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -67,12 +68,21 @@ private struct PreviewHeader: View {
 
     var body: some View {
         let s = style ?? settings.draft.face
+        let glass = settings.draft.usesGlass
         CalendarFace(style: s, size: s == .month ? 8.5 : 10, showsBackground: true)
             .environment(\.previewConfig, settings.draft)
             .environment(\.colorScheme, previewScheme)
             .frame(maxWidth: .infinity)
             .frame(height: 230)
             .padding(.vertical, 4)
+            .background {
+                // Glass needs something behind it to show; plain keeps the form background.
+                if glass {
+                    GlassBackdrop(p: settings.draft.palette(for: previewScheme))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .padding(-6)
+                }
+            }
     }
 }
 
@@ -93,6 +103,8 @@ private struct AppearanceSettings: View {
                 .pickerStyle(.segmented)
                 Text("System follows macOS Light/Dark mode automatically, including Auto at sunset.")
                     .font(.caption).foregroundStyle(.secondary)
+
+                GlassThemeToggle(isOn: $settings.draft.glassTheme)
 
                 Picker("Calendar style", selection: $settings.draft.face) {
                     ForEach(CalendarStyle.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
@@ -133,10 +145,10 @@ private struct AppearanceSettings: View {
                     }
                     .disabled(TickdeskStyle.load() == nil)
                     Spacer()
-                    Text(TickdeskStyle.load() == nil ? "Tickdesk settings not found" : "Theme, font and colors")
+                    Text(TickdeskStyle.load() == nil ? "Tickdesk settings not found" : "Theme, font, colors and glass")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Text("Uses the same Light/Dark/System choice, font and color combination as your Tickdesk clock so both widgets match.")
+                Text("Uses the same Light/Dark/System choice, font, colors and Liquid Glass setting as your Tickdesk clock so both widgets match.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

@@ -8,6 +8,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
+            #if DEBUG
+            if CommandLine.arguments.contains("--glass-snapshot") { GlassSnapshot.runIfRequested(); return }
+            #endif
             Snapshot.runIfRequested()
             let settings = CalendarSettings.shared
             settings.applyAppearance()
